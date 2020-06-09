@@ -1,0 +1,132 @@
+
+CREATE PROCEDURE CreateEsbTraceMessage(IN InputRoot REFERENCE, IN OutputRoot REFERENCE, IN refEnv REFERENCE, IN flag BOOLEAN)
+BEGIN
+	DECLARE inCCSID INT 1208;                  
+	DECLARE inEncoding INT 546; 
+	
+	--DECLARE msgBlob BLOB ASBITSTREAM(InputRoot.JSON.Data);
+  	--DECLARE msgChar CHAR CAST(msgBlob AS CHAR CCSID inCCSID);
+  		
+	DECLARE ns2 NAMESPACE 'http://telefonica.com/peru/esb/trace';
+	CREATE LASTCHILD OF OutputRoot DOMAIN 'XMLNSC';
+	DECLARE rootNode REFERENCE TO OutputRoot.XMLNSC;
+	
+	CREATE FIRSTCHILD OF rootNode TYPE XMLNSC.XmlDeclaration NAME 'XmlDeclaration';
+	SET rootNode.(XMLNSC.XmlDeclaration)*.(XMLNSC.Attribute)Version = '1.0';
+	SET rootNode.(XMLNSC.XmlDeclaration)*.(XMLNSC.Attribute)Encoding = 'UTF-8';
+	
+	SET rootNode.ns2:EsbTraceMessage.(XMLNSC.NamespaceDecl)xmlns:ns2 = ns2;
+	
+	SET rootNode.ns2:EsbTraceMessage.ns2:catalogId = refEnv.Variables.catalogId;
+	SET rootNode.ns2:EsbTraceMessage.ns2:referenceId = '';
+	SET rootNode.ns2:EsbTraceMessage.ns2:parentId = refEnv.Variables.parentId;
+	SET rootNode.ns2:EsbTraceMessage.ns2:transactionId = refEnv.Variables.transactionId;
+	
+	DECLARE putTime TIMESTAMP;
+   	SET putTime = CURRENT_TIMESTAMP - INTERVAL '5' HOUR;
+	SET rootNode.ns2:EsbTraceMessage.ns2:timeStamp = putTime;
+	
+	SET rootNode.ns2:EsbTraceMessage.ns2:environment = 'IBMAppConnect';
+	SET rootNode.ns2:EsbTraceMessage.ns2:application = 'Mi Movistar';
+	SET rootNode.ns2:EsbTraceMessage.ns2:serviceName = 'PaymentMethodsManagement'; 
+	SET rootNode.ns2:EsbTraceMessage.ns2:operationName = refEnv.Variables.operationName;
+	
+	IF flag THEN
+		SET rootNode.ns2:EsbTraceMessage.ns2:returnCode = 'OK';
+		SET rootNode.ns2:EsbTraceMessage.ns2:returnDescription = 'Succesfull execution';
+	ELSE
+		SET rootNode.ns2:EsbTraceMessage.ns2:returnCode = 'ERROR';
+		SET rootNode.ns2:EsbTraceMessage.ns2:returnDescription = 'Technical or Functional Error';
+	END IF;
+
+	SET rootNode.ns2:EsbTraceMessage.ns2:traceInformation.ns2:service = '';
+	SET rootNode.ns2:EsbTraceMessage.ns2:traceInformation.ns2:operation = '';
+	SET rootNode.ns2:EsbTraceMessage.ns2:traceInformation.ns2:layer = '';
+	SET rootNode.ns2:EsbTraceMessage.ns2:traceInformation.ns2:tamSystem = '';
+	SET rootNode.ns2:EsbTraceMessage.ns2:traceInformation.ns2:legacySystem = '';
+	SET rootNode.ns2:EsbTraceMessage.ns2:traceInformation.ns2:api = '';
+	SET rootNode.ns2:EsbTraceMessage.ns2:traceInformation.ns2:error = '';
+	
+	DECLARE msgBlob BLOB;
+	IF refEnv.Variables.catalogId = '1' OR refEnv.Variables.catalogId = '2' OR refEnv.Variables.catalogId = '3' THEN
+		SET msgBlob = ASBITSTREAM(InputRoot.XMLNSC, inEncoding, inCCSID);
+	ELSE
+		IF refEnv.Variables.InputExceptionList THEN
+			SET msgBlob = ASBITSTREAM(OutputRoot.JSON.Data);
+			DELETE FIELD OutputRoot.JSON;
+		ELSE
+			SET msgBlob = ASBITSTREAM(InputRoot.JSON.Data);
+		END IF;
+	END IF; 
+
+	DECLARE msgChar CHAR CAST(msgBlob AS CHAR CCSID inCCSID);
+ 	SET rootNode.ns2:EsbTraceMessage.ns2:messageContext.(XMLNSC.CDataField)ns2:serviceMessage = msgChar;
+ 	
+	SET rootNode.ns2:EsbTraceMessage.ns2:messageContext.ns2:telefonicaRequest.ns2:userLogin = '';
+	SET rootNode.ns2:EsbTraceMessage.ns2:messageContext.ns2:telefonicaRequest.ns2:serviceChannel = '';
+	SET rootNode.ns2:EsbTraceMessage.ns2:messageContext.ns2:telefonicaRequest.ns2:sessionCode = '';
+	SET rootNode.ns2:EsbTraceMessage.ns2:messageContext.ns2:telefonicaRequest.ns2:application = 'Mi Movistar';
+	SET rootNode.ns2:EsbTraceMessage.ns2:messageContext.ns2:telefonicaRequest.ns2:idMessage = '';
+	SET rootNode.ns2:EsbTraceMessage.ns2:messageContext.ns2:telefonicaRequest.ns2:ipAddress = '';
+	SET rootNode.ns2:EsbTraceMessage.ns2:messageContext.ns2:telefonicaRequest.ns2:functionalityCode = 'PMM000-' || refEnv.Variables.operationName;
+	SET rootNode.ns2:EsbTraceMessage.ns2:messageContext.ns2:telefonicaRequest.ns2:transactionTimestamp = putTime;
+	SET rootNode.ns2:EsbTraceMessage.ns2:messageContext.ns2:telefonicaRequest.ns2:serviceName = 'PaymentMethodsManagement';
+	SET rootNode.ns2:EsbTraceMessage.ns2:messageContext.ns2:telefonicaRequest.ns2:version = '1.0';
+END;
+
+CREATE PROCEDURE getLastExceptionDetail(IN InputTree REFERENCE, OUT messageNumber INTEGER,
+OUT messageText CHAR)	
+    /****************************************************************************
+	 * A procedure that will get the details of the last exception from a message
+	 * IN InputTree:  The incoming exception list
+	 * IN messageNumber:  The last message number.
+	 * IN messageText: The last message text.
+	 *****************************************************************************/
+BEGIN
+   	-- Create a reference to the first child of the exception list
+   	DECLARE ptrException REFERENCE TO InputTree.*[1];
+   	-- keep looping while the moves to the child of exception list work 
+	WHILE lastmove(ptrException) DO
+		-- store the current values for the error number and text
+		IF ptrException.Number IS NOT NULL THEN
+	        SET messageNumber = ptrException.Number;
+	        SET messageText = ptrException.Text;
+	  	END IF;
+	  	-- now move to the last child which should be the next exceptionlist
+		MOVE ptrException LASTCHILD;
+	END WHILE; 
+END;
+
+CREATE FUNCTION getIdPedido() RETURNS CHARACTER
+BEGIN
+	DECLARE now CHARACTER;
+	DECLARE random CHARACTER;
+	DECLARE putTime TIMESTAMP;
+	SET putTime = CURRENT_TIMESTAMP - INTERVAL '5' HOUR;
+	SET now = CAST(putTime AS CHARACTER FORMAT 'yyyyMMddHHmmss');
+	
+	SET putTime = CURRENT_TIMESTAMP - INTERVAL '5' HOUR;
+	SET random = CAST(EXTRACT(SECOND FROM putTime) AS CHARACTER);
+	
+	RETURN now || SUBSTRING(random FROM 3 FOR 5);
+END;
+
+CREATE FUNCTION getDateTime() RETURNS TIMESTAMP
+BEGIN
+	DECLARE putTime TIMESTAMP;
+	SET putTime = CURRENT_TIMESTAMP - INTERVAL '5' HOUR;
+	RETURN putTime;
+END;
+
+CREATE FUNCTION getTimeTrans() RETURNS CHARACTER
+BEGIN
+	DECLARE now CHARACTER;
+	DECLARE random CHARACTER;
+	DECLARE putTime TIMESTAMP;
+	SET putTime = CURRENT_TIMESTAMP - INTERVAL '5' HOUR;
+	SET now = CAST(putTime AS CHARACTER FORMAT 'yyyy-MM-dd HH:mm:ss');
+	SET now = REPLACE(now, ' ', 'T');
+	SET random = CAST(EXTRACT(SECOND FROM putTime) AS CHARACTER);
+	
+	RETURN now || SUBSTRING(random FROM 2 FOR 4) || ' America/Lima';
+END;

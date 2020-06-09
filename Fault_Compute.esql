@@ -1,0 +1,355 @@
+
+CREATE COMPUTE MODULE FaultCreatePayment_Compute
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		DECLARE flag BOOLEAN FALSE;
+		DECLARE refEnv REFERENCE TO Environment;
+		
+		IF FIELDTYPE(InputRoot.XMLNSC.Auditoria.Response) IS NOT NULL THEN
+			IF InputRoot.XMLNSC.Auditoria.ReceiveBD.P_COD_RESPUESTA = '0' THEN
+				SET flag = TRUE;
+			END IF;
+		ELSE
+			DECLARE rootNode REFERENCE TO InputRoot.XMLNSC;
+			SET rootNode.Auditoria.Response.exceptionId = InputRoot.JSON.Data.exceptionId; 
+			SET rootNode.Auditoria.Response.userMessage = InputRoot.JSON.Data.userMessage; 
+			SET rootNode.Auditoria.Response.moreInfo = InputRoot.JSON.Data.moreInfo; 
+			SET rootNode.Auditoria.Response.exceptionText = InputRoot.JSON.Data.exceptionText;  
+		END IF;
+		
+		IF FIELDTYPE(refEnv.Variables.operationName) IS NULL THEN
+			SET refEnv.Variables.operationName = InputLocalEnvironment.REST.Input.Operation;
+		END IF;
+			
+		IF FIELDTYPE(refEnv.Variables.catalogId) IS NULL THEN
+			SET refEnv.Variables.catalogId = '1';
+		ELSE
+			IF refEnv.Variables.operationName = 'deletePaymentMethod' THEN
+				IF flag THEN
+					SET refEnv.Variables.catalogId = '2';
+				ELSE
+					SET refEnv.Variables.catalogId = '3';
+				END IF;
+			END IF;
+		END IF;
+		
+		IF FIELDTYPE(refEnv.Variables.parentId) IS NULL THEN
+			SET refEnv.Variables.parentId = UUIDASCHAR;
+		END IF;
+		
+		SET refEnv.Variables.transactionId = refEnv.Variables.parentId;
+
+		CALL CreateEsbTraceMessage(InputRoot, OutputRoot, refEnv, flag);
+		PROPAGATE TO TERMINAL 0 DELETE NONE;
+		
+		DELETE FIELD InputRoot.XMLNSC;
+		DELETE FIELD OutputRoot.XMLNSC;
+		
+		--CALL CopyMessageHeaders();
+		CALL CopyEntireMessage();
+		
+		SET OutputRoot.HTTPResponseHeader."Content-Type" = 'application/json';
+		SET OutputRoot.HTTPResponseHeader."UNICA-ServiceId" = refEnv.UNICA_ServiceId;
+		SET OutputRoot.HTTPResponseHeader."UNICA-PID" = refEnv.UNICA_PID;
+		SET OutputLocalEnvironment.Destination.HTTP.ReplyStatusCode = refEnv.statusCode;
+		
+		IF refEnv.Variables.operationName = 'deletePaymentMethod' THEN
+			IF refEnv.statusCode = 200 THEN 
+				PROPAGATE TO TERMINAL 1;
+			ELSE
+				PROPAGATE TO TERMINAL 2;
+			END IF;
+		ELSE
+			PROPAGATE TO TERMINAL 1;
+		END IF;
+		
+		RETURN FALSE;
+	END;
+
+	CREATE PROCEDURE CopyMessageHeaders() BEGIN
+		DECLARE I INTEGER 1;
+		DECLARE J INTEGER;
+		SET J = CARDINALITY(InputRoot.*[]);
+		WHILE I < J DO
+			SET OutputRoot.*[I] = InputRoot.*[I];
+			SET I = I + 1;
+		END WHILE;
+	END;
+
+	CREATE PROCEDURE CopyEntireMessage() BEGIN
+		SET OutputRoot = InputRoot;
+	END;
+END MODULE;
+
+CREATE COMPUTE MODULE DeletePaymentMethodToUnregisterRecurringPaymentDCPInput
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		DECLARE refEnv REFERENCE TO Environment;
+		
+		--DECLARE idPedido CHARACTER;
+		--CALL getIdPedido() INTO idPedido;
+		
+		DECLARE timeTrans CHARACTER;
+		CALL getTimeTrans() INTO timeTrans;
+		
+		SET OutputRoot.JSON.Data.idVersion = '0006';
+		SET OutputRoot.JSON.Data.iDTM = '1303';
+		SET OutputRoot.JSON.Data.idEntidad = 'TPER';
+		SET OutputRoot.JSON.Data.idComercio = InputRoot.JSON.Data.Item[1].channel.id;
+		SET OutputRoot.JSON.Data.idPedido = refEnv.UNICA_PID;
+		SET OutputRoot.JSON.Data.timeTrans = timeTrans;
+		SET OutputRoot.JSON.Data.idUsuario = InputRoot.JSON.Data.Item[1].customer.id;
+		SET OutputRoot.JSON.Data.token = InputRoot.JSON.Data.Item[1].details.token;
+	
+		PROPAGATE TO TERMINAL 0;
+
+		RETURN FALSE;
+	END;
+END MODULE;
+
+CREATE COMPUTE MODULE Send_Receive_UnregisterRecurringPayment
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		DECLARE flagDCP BOOLEAN TRUE;
+		DECLARE flag BOOLEAN FALSE;
+		DECLARE refEnv REFERENCE TO Environment;
+		DECLARE inCCSID INT 1208;                  
+		DECLARE inEncoding INT 546; 
+		DECLARE bodyBlob BLOB;
+
+		IF FIELDTYPE(InputRoot.JSON.Data.codResolucion) IS NOT NULL THEN
+			SET refEnv.Variables.catalogId = '19';
+				
+			IF NOT InputRoot.JSON.Data.codResolucion = '0000' THEN
+				SET flagDCP = FALSE;
+			END IF;
+				
+			SET refEnv.Variables.flagUnregisterRecurringPayment = flagDCP;
+			SET refEnv.Variables.UnregisterRecurringPaymentResponse = InputRoot.JSON.Data;
+		ELSE
+			SET flag = TRUE;
+			SET refEnv.Variables.catalogId = '18';
+			SET refEnv.Variables.UnregisterRecurringPaymentRequest = InputRoot.JSON.Data;
+			SET refEnv.Variables.transactionId = UUIDASCHAR;
+		END IF;
+		
+		CALL CreateEsbTraceMessage(InputRoot, OutputRoot, refEnv, flagDCP);
+		PROPAGATE TO TERMINAL 0 DELETE NONE;
+		DELETE FIELD OutputRoot.XMLNSC;
+		
+		CALL CopyEntireMessage();
+		
+		IF flag THEN
+			-- request method unregisterrecurringpayment 
+			PROPAGATE TO TERMINAL 1;
+		ELSE
+			-- response method unregisterrecurringpayment
+			IF refEnv.Variables.flagUnregisterRecurringPayment THEN
+				SET refEnv.statusCode = 200;
+			ELSE
+				SET refEnv.statusCode = 400;
+				
+				DELETE FIELD OutputRoot.JSON;
+				SET OutputRoot.JSON.Data.exceptionId = 'SVC0001';
+				SET OutputRoot.JSON.Data.userMessage = 'Generic Client Error: ' || refEnv.Variables.parentId;
+				SET OutputRoot.JSON.Data.moreInfo = 'Generic wildcard fault response.';
+				SET OutputRoot.JSON.Data.exceptionText = 'Error in DCP return "codResolucion": "' || 
+				InputRoot.JSON.Data.codResolucion || '" and "desResolucion": "' || 
+				InputRoot.JSON.Data.desResolucion || '".';
+			END IF;
+
+			SET OutputRoot.HTTPResponseHeader."Content-Type" = 'application/json';
+			SET OutputRoot.HTTPResponseHeader."UNICA-ServiceId" = refEnv.UNICA_ServiceId;
+			SET OutputRoot.HTTPResponseHeader."UNICA-PID" = refEnv.UNICA_PID;
+			SET OutputLocalEnvironment.Destination.HTTP.ReplyStatusCode = refEnv.statusCode;
+		
+			PROPAGATE TO TERMINAL 2;
+		END IF;
+
+		RETURN FALSE;
+	END;
+
+	CREATE PROCEDURE CopyEntireMessage() BEGIN
+		SET OutputRoot = InputRoot;
+	END;
+END MODULE;
+
+CREATE COMPUTE MODULE Fault_UnregisterRecurringPayment
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		DECLARE refEnv REFERENCE TO Environment;
+		DELETE FIELD InputRoot.BLOB;
+		
+		DECLARE messageNumber INTEGER;
+		IF FIELDTYPE(InputExceptionList.*[1]) IS NOT NULL THEN
+  			DECLARE messageText CHAR;
+			DECLARE InputTree REFERENCE TO InputExceptionList;
+			CALL getLastExceptionDetail(InputTree, messageNumber, messageText);
+
+			IF messageNumber = 3151 THEN
+				SET refEnv.statusCode = 504;
+				SET OutputRoot.JSON.Data.exceptionId = 'SVR1008';
+				SET OutputRoot.JSON.Data.userMessage = 'Timeout processing request DCP';
+				SET OutputRoot.JSON.Data.moreInfo = 'There was a timeout in the server side while processing the request.';
+			ELSE
+				SET refEnv.statusCode = 503;
+				SET OutputRoot.JSON.Data.exceptionId = 'SVR1006';
+				SET OutputRoot.JSON.Data.userMessage = 'Service Unavailable';
+				SET OutputRoot.JSON.Data.moreInfo = 'There was a problem in Server side, unable to handle the request due to a temporary overloading or maintenance of the server.';
+			END IF;
+		
+		   	SET OutputRoot.JSON.Data.exceptionText = 'Error in operation ' || refEnv.Variables.parentId || ': ' || messageText;
+
+		    SET refEnv.OutputRoot = OutputRoot.JSON.Data;
+		    SET refEnv.Variables.InputExceptionList = TRUE;
+		ELSE
+		    SET refEnv.Variables.InputExceptionList = FALSE;
+		END IF;
+		
+		SET refEnv.Variables.catalogId = '19';
+		CALL CreateEsbTraceMessage(InputRoot, OutputRoot, refEnv, FALSE);
+		PROPAGATE TO TERMINAL 0 DELETE NONE;
+		
+		DELETE FIELD InputRoot.XMLNSC;
+		DELETE FIELD OutputRoot.XMLNSC;
+		
+		-- send message error
+		IF refEnv.Variables.InputExceptionList THEN
+			SET OutputRoot.JSON.Data =  refEnv.OutputRoot;
+		ELSE
+			SET refEnv.statusCode = 500;
+			SET OutputRoot.JSON.Data.exceptionId = 'SVR1000';
+			SET OutputRoot.JSON.Data.userMessage = 'Generic Server Fault';
+			SET OutputRoot.JSON.Data.moreInfo = 'There was a problem in the Service Providers network that prevented to carry out the request.';
+			SET OutputRoot.JSON.Data.exceptionText = 'Generic Server Error: ' || refEnv.Variables.parentId;
+		END IF;
+
+		SET OutputRoot.HTTPResponseHeader."Content-Type" = 'application/json';
+		SET OutputRoot.HTTPResponseHeader."UNICA-ServiceId" = refEnv.UNICA_ServiceId;
+		SET OutputRoot.HTTPResponseHeader."UNICA-PID" = refEnv.UNICA_PID;
+		SET OutputLocalEnvironment.Destination.HTTP.ReplyStatusCode = refEnv.statusCode;
+			
+		PROPAGATE TO TERMINAL 1;
+		
+		RETURN FALSE;
+	END;
+END MODULE;
+
+CREATE FILTER MODULE EvaluarUnregisterRecurringPayment_Filter
+    CREATE FUNCTION Main() RETURNS BOOLEAN
+    BEGIN
+    	DECLARE refEnv REFERENCE TO Environment;
+
+    	IF refEnv.statusCode = 200 THEN
+    		-- UnregisterRecurringPayment Success
+			RETURN TRUE; 
+    	ELSE
+			-- UnregisterRecurringPayment Unsuccessfully
+			RETURN FALSE; 
+		END IF;
+    END;
+END MODULE;
+
+--CREATE COMPUTE MODULE  FaultDeletePayment_Compute 
+--	CREATE FUNCTION Main() RETURNS BOOLEAN
+--	BEGIN
+--		DECLARE flag BOOLEAN FALSE;
+--		DECLARE refEnv REFERENCE TO Environment;
+--		SET refEnv.Variables.catalogId = '1';
+--	  	SET refEnv.Variables.parentId = UUIDASCHAR;
+--		SET refEnv.Variables.transactionId = refEnv.Variables.parentId;
+--		SET refEnv.Variables.operationName = InputLocalEnvironment.REST.Input.Operation;
+--			
+--					
+--		IF InputRoot.XMLNSC.Auditoria.ReceiveBD.P_COD_RESPUESTA ='0' THEN
+--			SET flag = TRUE;
+--		ELSE
+--			-- CREATE LASTCHILD OF OutputRoot DOMAIN 'XMLNSC';
+--			DECLARE rootNode REFERENCE TO OutputRoot.XMLNSC;
+--			SET rootNode = InputRoot.XMLNSC;
+--			SET rootNode.Auditoria.Response.exceptionId = InputRoot.JSON.Data.exceptionId; 
+--			SET rootNode.Auditoria.Response.userMessage = InputRoot.JSON.Data.userMessage; 
+--			SET rootNode.Auditoria.Response.moreInfo = InputRoot.JSON.Data.moreInfo; 
+--			SET rootNode.Auditoria.Response.exceptionText = InputRoot.JSON.Data.exceptionText;  
+--		END IF;
+--		
+--		CALL CreateEsbTraceMessage(InputRoot, OutputRoot, refEnv, flag);
+--		PROPAGATE TO TERMINAL 0 DELETE NONE;
+--		
+--		DELETE FIELD InputRoot.XMLNSC;
+--		DELETE FIELD OutputRoot.XMLNSC;
+--		
+--		CALL CopyMessageHeaders();
+--		CALL CopyEntireMessage();
+--		
+--		PROPAGATE TO TERMINAL 1;
+--
+--		RETURN FALSE;
+--	END;
+--
+--	CREATE PROCEDURE CopyMessageHeaders() BEGIN
+--		DECLARE I INTEGER 1;
+--		DECLARE J INTEGER;
+--		SET J = CARDINALITY(InputRoot.*[]);
+--		WHILE I < J DO
+--			SET OutputRoot.*[I] = InputRoot.*[I];
+--			SET I = I + 1;
+--		END WHILE;
+--	END;
+--
+--	CREATE PROCEDURE CopyEntireMessage() BEGIN
+--		SET OutputRoot = InputRoot;
+--	END;
+--END MODULE;
+--
+--
+--CREATE COMPUTE MODULE  FaultRetrievePayment_Compute 
+--	CREATE FUNCTION Main() RETURNS BOOLEAN
+--	BEGIN
+--		DECLARE flag BOOLEAN FALSE;
+--		DECLARE refEnv REFERENCE TO Environment;
+--		SET refEnv.Variables.catalogId = '1';
+--	  	SET refEnv.Variables.parentId = UUIDASCHAR;
+--		SET refEnv.Variables.transactionId = refEnv.Variables.parentId;
+--		SET refEnv.Variables.operationName = InputLocalEnvironment.REST.Input.Operation;
+--
+--		IF InputRoot.XMLNSC.Auditoria.ReceiveBD.P_COD_RESPUESTA ='0' THEN
+--			SET flag = TRUE;
+--		ELSE
+--			-- CREATE LASTCHILD OF OutputRoot DOMAIN 'XMLNSC';
+--			DECLARE rootNode REFERENCE TO OutputRoot.XMLNSC;
+--			SET rootNode = InputRoot.XMLNSC;
+--			SET rootNode.Auditoria.Response.exceptionId = InputRoot.JSON.Data.exceptionId; 
+--			SET rootNode.Auditoria.Response.userMessage = InputRoot.JSON.Data.userMessage; 
+--			SET rootNode.Auditoria.Response.moreInfo = InputRoot.JSON.Data.moreInfo; 
+--			SET rootNode.Auditoria.Response.exceptionText = InputRoot.JSON.Data.exceptionText;  
+--		END IF;
+--		
+--		CALL CreateEsbTraceMessage(InputRoot, OutputRoot, refEnv, flag);
+--		PROPAGATE TO TERMINAL 0 DELETE NONE;
+--		
+--		DELETE FIELD InputRoot.XMLNSC;
+--		DELETE FIELD OutputRoot.XMLNSC;
+--		
+--		CALL CopyMessageHeaders();
+--		CALL CopyEntireMessage();
+--		
+--		PROPAGATE TO TERMINAL 1;
+--
+--		RETURN FALSE;
+--	END;
+--
+--	CREATE PROCEDURE CopyMessageHeaders() BEGIN
+--		DECLARE I INTEGER 1;
+--		DECLARE J INTEGER;
+--		SET J = CARDINALITY(InputRoot.*[]);
+--		WHILE I < J DO
+--			SET OutputRoot.*[I] = InputRoot.*[I];
+--			SET I = I + 1;
+--		END WHILE;
+--	END;
+--
+--	CREATE PROCEDURE CopyEntireMessage() BEGIN
+--		SET OutputRoot = InputRoot;
+--	END;
+--END MODULE;

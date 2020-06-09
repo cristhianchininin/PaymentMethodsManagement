@@ -1,0 +1,1530 @@
+{
+  "basePath" : "/ri/paymentMethods/v1",
+  "definitions" : {
+    "AssociatedPaymentMethodRequestType" : {
+      "description" : "Request for the creation or modification of an associated payment method. It contains the same fields as paymentMethodRequestType plus the ones used for the association",
+      "allOf" : [ {
+        "$ref" : "#/definitions/PaymentMethodRequestType"
+      }, {
+        "$ref" : "#/definitions/AssociationType"
+      } ]
+    },
+    "PaymentMethodType" : {
+      "description" : "Representation of a payment method",
+      "allOf" : [ {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "description" : "Unique id of the payment method in the server"
+          },
+          "href" : {
+            "type" : "string",
+            "description" : "URI where to perform actions on the payment method"
+          }
+        },
+        "required" : [ "id", "href" ]
+      }, {
+        "$ref" : "#/definitions/PaymentMethodRequestType"
+      } ]
+    },
+    "QuantityType" : {
+      "description" : "Representation of a quantity of something. I can also be used to represent a quantity range",
+      "properties" : {
+        "amount" : {
+          "format" : "decimal",
+          "type" : "number",
+          "description" : "Measured amount"
+        },
+        "maximum" : {
+          "format" : "decimal",
+          "type" : "number",
+          "description" : "Maximum amount allowed"
+        },
+        "minimum" : {
+          "format" : "decimal",
+          "type" : "number",
+          "description" : "Minimum amount allowed"
+        },
+        "units" : {
+          "type" : "string",
+          "description" : "Units the quantity is measured in"
+        }
+      },
+      "required" : [ "units", "amount" ]
+    },
+    "TimePeriodType" : {
+      "description" : "Representation of a time period",
+      "properties" : {
+        "startDateTime" : {
+          "format" : "date-time",
+          "type" : "string",
+          "description" : "Start date of the period"
+        },
+        "endDateTime" : {
+          "format" : "date-time",
+          "type" : "string",
+          "description" : "End date of the period"
+        }
+      },
+      "required" : [ "startDateTime" ]
+    },
+    "AssociationType" : {
+      "description" : "Describes a relationship of one entity on another",
+      "properties" : {
+        "preferred" : {
+          "type" : "boolean",
+          "description" : "Describes if the relationship with this entity is the preferred one (e.g.: preferred payment method, preferred contact...)"
+        },
+        "relInfo" : {
+          "items" : {
+            "$ref" : "#/definitions/KeyValueType"
+          },
+          "description" : "Key value array with extended information about the association",
+          "type" : "array"
+        },
+        "roles" : {
+          "items" : {
+            "type" : "string"
+          },
+          "type" : "array",
+          "description" : "roles one entity has on another"
+        },
+        "validFor" : {
+          "description" : "duration of the association",
+          "$ref" : "#/definitions/TimePeriodType"
+        }
+      }
+    },
+    "KeyValueType" : {
+      "description" : "Indicates a key value pair",
+      "properties" : {
+        "key" : {
+          "type" : "string",
+          "description" : "Identifier of the specific parameter (implementation and application specific)"
+        },
+        "value" : {
+          "type" : "string",
+          "description" : "Value allocated to the specific parameter identified by the key name"
+        }
+      },
+      "required" : [ "key", "value" ]
+    },
+    "AssociatedPaymentMethodType" : {
+      "description" : "Data representing an associated payment method. It contains the same fields as paymentMethodType plus the ones used for the association",
+      "allOf" : [ {
+        "$ref" : "#/definitions/PaymentMethodType"
+      }, {
+        "$ref" : "#/definitions/AssociationType"
+      } ]
+    },
+    "PaymentMethodRequestType" : {
+      "description" : "All necessary data to create a payment method.",
+      "properties" : {
+        "name" : {
+          "type" : "string",
+          "description" : "Screen name of the payment method"
+        },
+        "description" : {
+          "type" : "string",
+          "description" : "Description of the payment method"
+        },
+        "account" : {
+          "$ref" : "#/definitions/AccountRefType",
+          "description" : "Account that owns the payment method"
+        },
+        "@type" : {
+          "type" : "string",
+          "enum" : [ "cash", "digitalWallet", "tokenizedCard", "bankAccountTransfer", "bankAccountDebit", "bankCard", "account", "bucket", "voucher", "check", "loyaltyAccount" ],
+          "description" : "Payment method type. The content of the details field depends on the value of this one"
+        },
+        "authorizationCode" : {
+          "type" : "string",
+          "description" : "Authorization code provided by a financial institution. Typically this would be populated for recurring payments using the method, as payments have an authorization code of their own."
+        },
+        "status" : {
+          "type" : "string",
+          "description" : "Current status of the payment method"
+        },
+        "statusDate" : {
+          "format" : "date-time",
+          "type" : "string",
+          "description" : "Last time the status changed"
+        },
+        "customer" : {
+          "$ref" : "#/definitions/CustomerType",
+          "description" : "Customer that owns the payment method"
+        },
+        "channel" : {
+          "$ref" : "#/definitions/ChannelType",
+          "description" : "Customer that owns the payment method"
+        },
+        "productType" : {
+          "type" : "string",
+          "description" : "Indicates the type of product instance registered. Supported values are implementation and application specific"
+        },
+        "publicId" : {
+          "type" : "string",
+          "description" : "To obtain the list of products associated with a given public identifier (e.g.: an msisdn subscription id)"
+        }
+      },
+      "required" : [ "@type" ],
+      "discriminator" : "@type"
+    },
+    "cash" : {
+      "description" : "Representation of a payment method",
+      "allOf" : [ {
+        "$ref" : "#/definitions/PaymentMethodRequestType"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "details" : {
+            "description" : "Detail Representation of a payment method",
+            "$ref" : "#/definitions/CashType"
+          }
+        },
+        "required" : [ "details" ]
+      } ]
+    },
+    "digitalWallet" : {
+      "description" : "Representation of a payment method",
+      "allOf" : [ {
+        "$ref" : "#/definitions/PaymentMethodRequestType"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "details" : {
+            "description" : "Detail Representation of a payment method",
+            "$ref" : "#/definitions/DigitalWalletType"
+          }
+        },
+        "required" : [ "details" ]
+      } ]
+    },
+    "voucher" : {
+      "description" : "Representation of a payment method",
+      "allOf" : [ {
+        "$ref" : "#/definitions/PaymentMethodRequestType"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "details" : {
+            "description" : "Detail Representation of a payment method",
+            "$ref" : "#/definitions/VoucherType"
+          }
+        }
+      } ]
+    },
+    "check" : {
+      "description" : "Representation of a payment method",
+      "allOf" : [ {
+        "$ref" : "#/definitions/PaymentMethodRequestType"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "details" : {
+            "description" : "Detail Representation of a payment method",
+            "$ref" : "#/definitions/CheckType"
+          }
+        }
+      } ]
+    },
+    "tokenizedCard" : {
+      "description" : "Representation of a payment method",
+      "allOf" : [ {
+        "$ref" : "#/definitions/PaymentMethodRequestType"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "details" : {
+            "description" : "Detail Representation of a payment method",
+            "$ref" : "#/definitions/TokenizedCardType"
+          }
+        },
+        "required" : [ "details" ]
+      } ]
+    },
+    "account" : {
+      "description" : "Representation of a payment method",
+      "allOf" : [ {
+        "$ref" : "#/definitions/PaymentMethodRequestType"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "details" : {
+            "description" : "Detail Representation of a payment method",
+            "$ref" : "#/definitions/AccountRefType"
+          }
+        }
+      } ]
+    },
+    "bucket" : {
+      "description" : "Representation of a payment method",
+      "allOf" : [ {
+        "$ref" : "#/definitions/PaymentMethodRequestType"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "details" : {
+            "description" : "Detail Representation of a payment method",
+            "$ref" : "#/definitions/BucketRefType"
+          }
+        }
+      } ]
+    },
+    "loyaltyAccount" : {
+      "description" : "Representation of a payment method",
+      "allOf" : [ {
+        "$ref" : "#/definitions/PaymentMethodRequestType"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "details" : {
+            "description" : "Detail Representation of a payment method",
+            "$ref" : "#/definitions/LoyaltyAccountRefType"
+          }
+        }
+      } ]
+    },
+    "bankAccountTransfer" : {
+      "description" : "Representation of a payment method",
+      "allOf" : [ {
+        "$ref" : "#/definitions/PaymentMethodRequestType"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "details" : {
+            "description" : "Detail Representation of a payment method",
+            "$ref" : "#/definitions/BankAccountTransferType"
+          }
+        },
+        "required" : [ "details" ]
+      } ]
+    },
+    "bankAccountDebit" : {
+      "description" : "Representation of a payment method",
+      "allOf" : [ {
+        "$ref" : "#/definitions/PaymentMethodRequestType"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "details" : {
+            "description" : "Detail Representation of a payment method",
+            "$ref" : "#/definitions/BankAccountDebitType"
+          }
+        },
+        "required" : [ "details" ]
+      } ]
+    },
+    "bankCard" : {
+      "description" : "Representation of a payment method",
+      "allOf" : [ {
+        "$ref" : "#/definitions/PaymentMethodRequestType"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "details" : {
+            "description" : "Detail Representation of a payment method",
+            "$ref" : "#/definitions/BankCardType"
+          }
+        },
+        "required" : [ "details" ]
+      } ]
+    },
+    "BankCardType" : {
+      "description" : "Details of a bank card. This is one of the possible types for the details field in a payment method.",
+      "properties" : {
+        "brand" : {
+          "type" : "string",
+          "description" : "Credit card brand. E.g.: Visa, MasterCard, AmericanExpress..."
+        },
+        "type" : {
+          "type" : "string",
+          "enum" : [ "Debit", "Credit" ],
+          "description" : "Debit or credit"
+        },
+        "cardNumber" : {
+          "type" : "string",
+          "description" : "Credit card number"
+        },
+        "expirationDate" : {
+          "type" : "string",
+          "description" : "the card's expiration date"
+        },
+        "cvv" : {
+          "type" : "string",
+          "description" : "the CVV or CVV2 code of the card"
+        },
+        "lastFourDigits" : {
+          "type" : "string",
+          "description" : "Last four digits of the card"
+        },
+        "nameOnCard" : {
+          "type" : "string",
+          "description" : "Name writen on the card"
+        },
+        "bank" : {
+          "type" : "string",
+          "description" : "Bank that issued the card"
+        }
+      },
+      "required" : [ "brand", "cardNumber", "expirationDate" ]
+    },
+    "TokenizedCardType" : {
+      "description" : "Details of a bank card. This is one of the possible types for the details field in a payment method.",
+      "properties" : {
+        "brand" : {
+          "type" : "string",
+          "description" : "Credit card brand. E.g.: Visa, MasterCard, AmericanExpress... Might be used for display purposes"
+        },
+        "type" : {
+          "type" : "string",
+          "enum" : [ "Debit", "Credit" ],
+          "description" : "Card type. Might be used for display purposes"
+        },
+        "lastFourDigits" : {
+          "type" : "string",
+          "description" : "Last four digits of the credit card. Might be used for display purposes"
+        },
+        "expirationDate" : {
+          "type" : "string",
+          "description" : "the card's expiration date"
+        },
+        "tokenType" : {
+          "type" : "string",
+          "description" : "Token type (e.g.: emv)"
+        },
+        "token" : {
+          "type" : "string",
+          "description" : "The token itself"
+        },
+        "issuer" : {
+          "type" : "string",
+          "description" : "Whoever issued the token"
+        },
+        "bank" : {
+          "type" : "string",
+          "description" : "Bank that issued the card. (e.g.: Santander, BNP, HSBC...)"
+        }
+      },
+      "required" : [ "tokenType", "token" ]
+    },
+    "BankAccountTransferType" : {
+      "description" : "Details of a bank account. This is one of the possible types for the details field in a payment method.",
+      "properties" : {
+        "accountNumber" : {
+          "type" : "string",
+          "description" : "Bank Account Number (this could refer to the IBAN or SWIFT number)"
+        },
+        "accountNumberType" : {
+          "type" : "string",
+          "description" : "Type of account number (e.g.: IBAN, SWIFT, ...)"
+        },
+        "BIC" : {
+          "type" : "string",
+          "description" : "Business Identifier Code/Swift code of the financial institution where the account is located"
+        },
+        "owner" : {
+          "type" : "string",
+          "description" : "Owner of the bank account"
+        },
+        "bank" : {
+          "type" : "string",
+          "description" : "Screen name of the bank"
+        }
+      },
+      "required" : [ "accountNumber", "accountNumberType" ]
+    },
+    "BankAccountDebitType" : {
+      "description" : "Details of a bank account. This is one of the possible types for the details field in a payment method.",
+      "properties" : {
+        "accountNumber" : {
+          "type" : "string",
+          "description" : "Bank Account Number (this could refer to the IBAN or SWIFT number)"
+        },
+        "accountNumberType" : {
+          "type" : "string",
+          "description" : "Type of account number (e.g.: IBAN, SWIFT, ...)"
+        },
+        "BIC" : {
+          "type" : "string",
+          "description" : "Business Identifier Code/Swift code of the financial institution where the account is located"
+        },
+        "owner" : {
+          "type" : "string",
+          "description" : "Owner of the bank account"
+        },
+        "bank" : {
+          "type" : "string",
+          "description" : "Screen name of the bank"
+        }
+      },
+      "required" : [ "accountNumber", "accountNumberType" ]
+    },
+    "CashType" : {
+      "description" : "Details of cash payer. This is one of the possible types for the details field in a payment method.",
+      "properties" : {
+        "cashierInfo" : {
+          "type" : "string",
+          "description" : "Information about who performed the payment"
+        }
+      }
+    },
+    "CheckType" : {
+      "description" : "Details of a check. This is one of the possible types for the details field in a payment method.",
+      "properties" : {
+        "checkId" : {
+          "description" : "Unique identifier of the check in the bank that issues them. Typically writen on them and comprises bank, account and serial number.",
+          "type" : "string"
+        },
+        "drawer" : {
+          "description" : "Person or entity writing the check",
+          "type" : "string"
+        },
+        "payee" : {
+          "description" : "Person or entity the check is addressed to",
+          "type" : "string"
+        },
+        "bank" : {
+          "description" : "Entity, typically a bank, performing the payment of the check",
+          "type" : "string"
+        },
+        "date" : {
+          "description" : "Date when the check was signed",
+          "type" : "string",
+          "format" : "date-time"
+        }
+      },
+      "required" : [ "drawer", "payee", "bank" ]
+    },
+    "DigitalWalletType" : {
+      "description" : "Details of a digital wallet. This is one of the possible types for the details field in a payment method.",
+      "properties" : {
+        "service" : {
+          "type" : "string",
+          "description" : "Wallet service (e.g.: PayPal)"
+        },
+        "walletId" : {
+          "type" : "string",
+          "description" : "Unique Id of the account in the service"
+        },
+        "walletUrl" : {
+          "type" : "string",
+          "description" : "URI pointing at the digital wallet (e.g.: https://paypal.me/johndoe)"
+        }
+      },
+      "required" : [ "service", "walletId" ]
+    },
+    "AccountRefType" : {
+      "description" : "Reference to an external account that can be queried with the Account Management API.",
+      "properties" : {
+        "id" : {
+          "type" : "string",
+          "description" : "Unique identifier of the account"
+        },
+        "href" : {
+          "type" : "string",
+          "description" : "A resource URI pointing to the account resource in the server"
+        },
+        "name" : {
+          "type" : "string",
+          "description" : "Account name"
+        },
+        "@referredType" : {
+          "type" : "string",
+          "description" : "Type of referred account e.g.: financial account, billing account…"
+        },
+        "billingMethod" : {
+          "type" : "string",
+          "description" : "How this account is billed",
+          "enum" : [ "prepaid", "postpaid", "control" ]
+        }
+      },
+      "required" : [ "id", "href" ]
+    },
+    "LoyaltyAccountRefType" : {
+      "description" : "Reference to an external loyalty account that can be queried with another API.",
+      "properties" : {
+        "id" : {
+          "type" : "string",
+          "description" : "Unique identifier of the loyalty account"
+        },
+        "href" : {
+          "type" : "string",
+          "description" : "A resource URI pointing to the loyalty account resource in the server"
+        },
+        "name" : {
+          "type" : "string",
+          "description" : "Loyalty account name"
+        },
+        "@referredType" : {
+          "type" : "string",
+          "description" : "Type of referred loyalty account in case it is polymorphic"
+        }
+      },
+      "required" : [ "id", "href" ]
+    },
+    "BucketRefType" : {
+      "description" : "Reference to a bucket that can be queried with the Prepay Balance Management API.",
+      "properties" : {
+        "id" : {
+          "type" : "string",
+          "description" : "Unique identifier of the bucket"
+        },
+        "href" : {
+          "type" : "string",
+          "description" : "A resource URI pointing to the bucket resource in the server"
+        },
+        "name" : {
+          "type" : "string",
+          "description" : "Bucket name"
+        },
+        "@referredType" : {
+          "type" : "string",
+          "description" : "Type of referred bucket in case it is polymorphic",
+          "enum" : [ "general deposit", "promotional", "voice", "data", "sms", "additionalServices", "other" ]
+        }
+      },
+      "required" : [ "id", "href" ]
+    },
+    "VoucherType" : {
+      "description" : "Details of a voucher. This is one of the possible types for the details field in a payment method.",
+      "properties" : {
+        "code" : {
+          "type" : "string",
+          "description" : "Code that identifies the voucher or provides the discount"
+        },
+        "description" : {
+          "type" : "string",
+          "description" : "Description of the voucher (e.g.: get one and receive one free)"
+        },
+        "value" : {
+          "description" : "Discount that the voucher applies when it's a discount voucher",
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/definitions/QuantityType"
+          }
+        },
+        "expirationDate" : {
+          "type" : "string",
+          "format" : "date-time",
+          "description" : "the voucher's expiration date"
+        },
+        "campaign" : {
+          "type" : "string",
+          "description" : "Campaign this voucher belongs to"
+        }
+      },
+      "required" : [ "code" ]
+    },
+    "CustomerType" : {
+      "properties" : {
+        "id" : {
+          "type" : "string",
+          "description" : "Unique Identifier for the customer within the server"
+        }
+      },
+      "required" : [ "id" ]
+    },
+    "ChannelType" : {
+      "properties" : {
+        "id" : {
+          "type" : "string",
+          "description" : "Unique Identifier for the channel associated to the payment"
+        }
+      },
+      "required" : [ "id" ]
+    }
+  },
+  "host" : "apis.telefonica.com",
+  "info" : {
+    "description" : "This is a sample representation of the payment methods UNICA API using Swagger. You can find out more about UNICA APIs contacting Global IT. Since the server behind doesn't keep any context, most of the returning fields from the server will be filled with random dummy data",
+    "title" : "Payment Methods Management",
+    "version" : "1.2.3"
+  },
+  "paths" : {
+    "/paymentMethods" : {
+      "get" : {
+        "operationId" : "retrievePaymentMethods",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "UNICA-ServiceId",
+          "in" : "header",
+          "description" : "If this API is used via a platform acting as a common entry point to different OBs, this identifier is used to route the request to the corresponding OB environment",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "UNICA-Application",
+          "in" : "header",
+          "description" : "Identifier for the system originating the request",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "UNICA-PID",
+          "in" : "header",
+          "description" : "Unique identifier for the process or execution flow",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "UNICA-User",
+          "in" : "header",
+          "description" : "Identifies the user when the request is received from a trusted application and no end user authorization token is used but just an application token",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "Authorization",
+          "in" : "header",
+          "description" : "Including the proof of access (using OAuth2.0 security model) to guarantee that the consumer has privileges to access the entity database",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve methods of a specific type",
+          "enum" : [ "cash", "digitalWallet", "tokenizedCard", "bankAccountTransfer", "bankAccountDebit", "bankCard", "account", "bucket", "voucher", "check", "loyaltyAccount" ],
+          "in" : "query",
+          "name" : "type",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve the accounts of a specific bank",
+          "in" : "query",
+          "name" : "bankAccount.BIC",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve a specific account",
+          "in" : "query",
+          "name" : "bankAccount.accountNumber",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve the accounts of a specific bank",
+          "in" : "query",
+          "name" : "bankAccount.bank",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve a specific bank card",
+          "in" : "query",
+          "name" : "bankCard.cardNumber",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve cards with a specific name",
+          "in" : "query",
+          "name" : "bankCard.nameOnCard",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve cards of a specific type",
+          "in" : "query",
+          "name" : "bankCard.type",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve a specific check",
+          "in" : "query",
+          "name" : "check.checkId",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve checks of a specific bank",
+          "in" : "query",
+          "name" : "check.bank",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve methods from a specific related party",
+          "in" : "query",
+          "name" : "relatedParty.id",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve methods from a specific related party",
+          "in" : "query",
+          "name" : "relatedParty.type",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve a specific loyalty account",
+          "in" : "query",
+          "name" : "loyaltyAccount",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve digital wallets of a specific service",
+          "in" : "query",
+          "name" : "digitalWallet.service",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve a specific digital wallet",
+          "in" : "query",
+          "name" : "digitalWallet.id",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve a specific bucket",
+          "in" : "query",
+          "name" : "bucket",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve a specific voucher",
+          "in" : "query",
+          "name" : "voucher.id",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve voucher with a specific code",
+          "in" : "query",
+          "name" : "voucher.code",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To apply a filter on every resource included in the response. It's value is a list of comma separated values of the different fields that are requested.",
+          "in" : "query",
+          "name" : "fields",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To limit the maximum number of results to be included in the response. The name of query parameter is ‘limit’ and its value is an integer indicating the maximum number of elements to be included in the response.",
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "type" : "integer"
+        }, {
+          "description" : "To apply an offset in the results to be included in the response. The name of query parameter is ‘offset’ and its value is an integer indicating the offset to be applied.",
+          "in" : "query",
+          "name" : "offset",
+          "required" : false,
+          "type" : "integer"
+        }, {
+          "description" : "Identifier of the customer in the BSS systems",
+          "in" : "query",
+          "name" : "customer.id",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To obtain the list of products associated with a given public identifier",
+          "in" : "query",
+          "name" : "publicId",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve methods from a specific related party.",
+          "in" : "query",
+          "name" : "productType",
+          "required" : false,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Payment methods retrieved successfully",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/PaymentMethodType"
+              }
+            },
+            "headers" : {
+              "X-Total-Count" : {
+                "description" : "Total results",
+                "type" : "integer"
+              },
+              "UNICA-ServiceId" : {
+                "description" : "If this API is used via a platform acting as a common entry point to different OBs, this identifier is used to route the request to the corresponding OB environment",
+                "type" : "string"
+              },
+              "UNICA-PID" : {
+                "description" : "Unique identifier for the process or execution flow",
+                "type" : "string"
+              }
+            }
+          }
+        },
+        "summary" : "Retrieve a list of payment methods",
+        "tags" : [ "payment methods" ]
+      },
+      "post" : {
+        "operationId" : "createPaymentMethod",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "UNICA-ServiceId",
+          "in" : "header",
+          "description" : "If this API is used via a platform acting as a common entry point to different OBs, this identifier is used to route the request to the corresponding OB environment",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "UNICA-Application",
+          "in" : "header",
+          "description" : "Identifier for the system originating the request",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "UNICA-PID",
+          "in" : "header",
+          "description" : "Unique identifier for the process or execution flow",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "UNICA-User",
+          "in" : "header",
+          "description" : "Identifies the user when the request is received from a trusted application and no end user authorization token is used but just an application token",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "Authorization",
+          "in" : "header",
+          "description" : "Including the proof of access (using OAuth2.0 security model) to guarantee that the consumer has privileges to access the entity database",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "paymentMethodRequest",
+          "in" : "body",
+          "description" : "The payment method to be created.",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/PaymentMethodRequestType"
+          }
+        } ],
+        "responses" : {
+          "201" : {
+            "description" : "Payment method created successfully",
+            "schema" : {
+              "$ref" : "#/definitions/PaymentMethodType"
+            },
+            "headers" : {
+              "location" : {
+                "description" : "Location where to query the created payment method",
+                "type" : "string",
+                "x-required" : true
+              },
+              "UNICA-ServiceId" : {
+                "description" : "If this API is used via a platform acting as a common entry point to different OBs, this identifier is used to route the request to the corresponding OB environment",
+                "type" : "string"
+              },
+              "UNICA-PID" : {
+                "description" : "Unique identifier for the process or execution flow",
+                "type" : "string"
+              }
+            }
+          }
+        },
+        "summary" : "Create a new payment method",
+        "tags" : [ "payment methods" ]
+      }
+    },
+    "/paymentMethods/{paymentMethodId}" : {
+      "get" : {
+        "operationId" : "retrievePaymentMethod",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "paymentMethodId",
+          "in" : "path",
+          "description" : "id of the payment method to fetch",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Payment method retrieved successfully",
+            "schema" : {
+              "$ref" : "#/definitions/PaymentMethodType"
+            },
+            "headers" : {
+              "UNICA-ServiceId" : {
+                "description" : "If this API is used via a platform acting as a common entry point to different OBs, this identifier is used to route the request to the corresponding OB environment",
+                "type" : "string"
+              },
+              "UNICA-PID" : {
+                "description" : "Unique identifier for the process or execution flow",
+                "type" : "string"
+              }
+            }
+          }
+        },
+        "summary" : "Retrieve a payment method",
+        "tags" : [ "payment methods" ]
+      },
+      "delete" : {
+        "operationId" : "deletePaymentMethod",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "UNICA-ServiceId",
+          "in" : "header",
+          "description" : "If this API is used via a platform acting as a common entry point to different OBs, this identifier is used to route the request to the corresponding OB environment",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "UNICA-Application",
+          "in" : "header",
+          "description" : "Identifier for the system originating the request",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "UNICA-PID",
+          "in" : "header",
+          "description" : "Unique identifier for the process or execution flow",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "UNICA-User",
+          "in" : "header",
+          "description" : "Identifies the user when the request is received from a trusted application and no end user authorization token is used but just an application token",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "Authorization",
+          "in" : "header",
+          "description" : "Including the proof of access (using OAuth2.0 security model) to guarantee that the consumer has privileges to access the entity database",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "paymentMethodId",
+          "in" : "path",
+          "description" : "id of the payment method to fetch",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Payment method deleted successfully",
+            "headers" : {
+              "UNICA-ServiceId" : {
+                "description" : "If this API is used via a platform acting as a common entry point to different OBs, this identifier is used to route the request to the corresponding OB environment",
+                "type" : "string"
+              },
+              "UNICA-PID" : {
+                "description" : "Unique identifier for the process or execution flow",
+                "type" : "string"
+              }
+            }
+          }
+        },
+        "summary" : "Delete a payment method",
+        "tags" : [ "payment methods" ]
+      }
+    },
+    "/accounts/{accountId}/paymentMethods" : {
+      "get" : {
+        "operationId" : "retrieveAssociatedPaymentMethods",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "accountId",
+          "in" : "path",
+          "description" : "id of the account to fetch",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve methods of a specific type",
+          "enum" : [ "cash", "digitalWallet", "tokenizedCard", "bankAccountTransfer", "bankAccountDebit", "bankCard", "account", "bucket", "voucher", "check", "loyaltyAccount" ],
+          "in" : "query",
+          "name" : "type",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve the accounts of a specific bank",
+          "in" : "query",
+          "name" : "bankAccount.BIC",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve a specific account",
+          "in" : "query",
+          "name" : "bankAccount.accountNumber",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve the accounts of a specific bank",
+          "in" : "query",
+          "name" : "bankAccount.bank",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve a specific bank card",
+          "in" : "query",
+          "name" : "bankCard.cardNumber",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve cards with a specific name",
+          "in" : "query",
+          "name" : "bankCard.nameOnCard",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve cards of a specific type",
+          "in" : "query",
+          "name" : "bankCard.type",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve a specific check",
+          "in" : "query",
+          "name" : "check.checkId",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve checks of a specific bank",
+          "in" : "query",
+          "name" : "check.bank",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve a specific telco account",
+          "in" : "query",
+          "name" : "account",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve a specific loyalty account",
+          "in" : "query",
+          "name" : "loyaltyAccount",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve digital wallets of a specific service",
+          "in" : "query",
+          "name" : "digitalWallet.service",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve a specific digital wallet",
+          "in" : "query",
+          "name" : "digitalWallet.id",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve a specific bucket",
+          "in" : "query",
+          "name" : "bucket",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve a specific voucher",
+          "in" : "query",
+          "name" : "voucher.id",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To retrieve voucher with a specific code",
+          "in" : "query",
+          "name" : "voucher.code",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To apply a filter on every resource included in the response. It's value is a list of comma separated values of the different fields that are requested.",
+          "in" : "query",
+          "name" : "fields",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "description" : "To limit the maximum number of results to be included in the response. The name of query parameter is ‘limit’ and its value is an integer indicating the maximum number of elements to be included in the response.",
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "type" : "integer"
+        }, {
+          "description" : "To apply an offset in the results to be included in the response. The name of query parameter is ‘offset’ and its value is an integer indicating the offset to be applied.",
+          "in" : "query",
+          "name" : "offset",
+          "required" : false,
+          "type" : "integer"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Associated payment methods retrieved successfully",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/AssociatedPaymentMethodType"
+              }
+            },
+            "headers" : {
+              "X-Total-Count" : {
+                "description" : "Total results",
+                "type" : "integer"
+              }
+            }
+          }
+        },
+        "summary" : "Retrieve payment methods associated to an account",
+        "tags" : [ "payment methods of an account" ]
+      },
+      "post" : {
+        "operationId" : "createAccountPaymentMethod",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "accountId",
+          "in" : "path",
+          "required" : true,
+          "description" : "The account the payment method will be associated to",
+          "type" : "string"
+        }, {
+          "name" : "associatedPaymentMethodRequest",
+          "in" : "body",
+          "description" : "The associated payment method to be created.",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/AssociatedPaymentMethodRequestType"
+          }
+        } ],
+        "responses" : {
+          "201" : {
+            "description" : "Payment method created successfully",
+            "schema" : {
+              "$ref" : "#/definitions/AssociatedPaymentMethodType"
+            },
+            "headers" : {
+              "location" : {
+                "description" : "Location where to query the created payment method",
+                "type" : "string",
+                "x-required" : true
+              }
+            }
+          }
+        },
+        "summary" : "Create a new payment method of an account",
+        "tags" : [ "payment methods of an account" ]
+      }
+    },
+    "/accounts/{accountId}/paymentMethods/{paymentMethodId}" : {
+      "put" : {
+        "operationId" : "associateAccountPaymentMethod",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "accountId",
+          "in" : "path",
+          "required" : true,
+          "description" : "The account the payment method will be associated to",
+          "type" : "string"
+        }, {
+          "name" : "paymentMethodId",
+          "in" : "path",
+          "description" : "The payment method to be associated.",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "paymentMethodAssociation",
+          "in" : "body",
+          "description" : "The association details",
+          "schema" : {
+            "$ref" : "#/definitions/AssociationType"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Payment method associated successfully",
+            "schema" : {
+              "$ref" : "#/definitions/AssociatedPaymentMethodType"
+            }
+          }
+        },
+        "summary" : "Associate an existing payment method to an account",
+        "tags" : [ "payment methods of an account" ]
+      },
+      "delete" : {
+        "operationId" : "disassociateAccountPaymentMethod",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "accountId",
+          "in" : "path",
+          "required" : true,
+          "description" : "The account the payment method will be disassociated from",
+          "type" : "string"
+        }, {
+          "name" : "paymentMethodId",
+          "in" : "path",
+          "description" : "The payment method to be disassociated.",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Payment method disassociated successfully"
+          }
+        },
+        "summary" : "Disassociate an existing payment method from an account",
+        "tags" : [ "payment methods of an account" ]
+      }
+    }
+  },
+  "schemes" : [ "https" ],
+  "swagger" : "2.0",
+  "tags" : [ {
+    "name" : "payment methods",
+    "description" : "To be used typically by privileged users"
+  }, {
+    "name" : "payment methods of an account",
+    "description" : "To be used typically by final users"
+  } ],
+  "x-version-control" : {
+    "1.2.3" : {
+      "date" : "22/04/2020",
+      "editor" : "Arquitectura Peru",
+      "description" : "Added ChannelType to createPaymentMethod request.",
+      "changes" : [ "Added ChannelType to createPaymentMethod request." ]
+    },
+    "1.2.2" : {
+      "date" : "05/03/2020",
+      "editor" : "Arquitectura Peru",
+      "description" : "Added UNICA parameters",
+      "changes" : [ "Added UNICA parameters to reques and response headers of createPaymentMethod, retrievePaymentMethods and deletePaymentMethod." ]
+    },
+    "1.2.1" : {
+      "date" : "25/02/2020",
+      "editor" : "Arquitectura Peru",
+      "description" : "Added customer entity to creaatePaymentMethod operation",
+      "changes" : [ "Added CustomerType" ]
+    },
+    "1.2.0" : {
+      "date" : "18/04/2018",
+      "editor" : "Global IT",
+      "description" : "Fixed polymorphic types",
+      "changes" : [ "Fixed payment method types that did not link with the discriminator", "Added LoyaltyAccountRefType", "Added BucketRefType" ]
+    },
+    "1.1.0" : {
+      "date" : "18/04/2018",
+      "editor" : "Global IT",
+      "description" : "Added bank field to tokenized card",
+      "changes" : [ ]
+    },
+    "1.0.1" : {
+      "date" : "12/03/2018",
+      "editor" : "Global IT",
+      "description" : "Minor changes to fix polimorfic types: cash, digitalWallet, tokenizedCard, bankAccountTransfer, bankAccountDebit, bankCard, account. This changes are for internal definitions and they do not affect the interface.",
+      "changes" : [ ]
+    },
+    "1.0.0" : {
+      "date" : "02/06/2017",
+      "editor" : "Global IT",
+      "description" : "First release",
+      "changes" : [ ]
+    }
+  },
+  "x-telefonica-exceptions" : {
+    "syntax" : {
+      "SVC1000" : {
+        "exception" : "Missing Mandatory Parameter",
+        "description" : "API Request without mandatory field",
+        "text" : "\"Missing mandatory parameter: %1\" %1 - Element/Attribute name",
+        "code" : "400 BAD REQUEST",
+        "type" : "common"
+      },
+      "SVC1001" : {
+        "exception" : "Invalid Parameter",
+        "description" : "API Request with an element not conforming to Swagger definitions or to a list of allowed Query Parameters. ",
+        "text" : "\"Invalid parameter: %1\" %1 - Element/Attribute name",
+        "code" : "400 BAD REQUEST",
+        "type" : "common"
+      },
+      "SVC0003" : {
+        "exception" : "Invalid Input Value with a list of valid values",
+        "description" : "API Request with an element or attribute value not conforming to Swagger definitions or to a list of allowed Query Parameter values, because the element or attribute value belongs to an enumerated list of possible values.",
+        "text" : "\"Invalid parameter value: %1. Possible values are: %2 \" %1- Element/Attribute name %2 – List of valid values ",
+        "code" : "400 BAD REQUEST",
+        "type" : "common"
+      },
+      "SVC0004" : {
+        "exception" : "Invalid Request URI",
+        "description" : "Requested API port or resource does not exist",
+        "text" : "",
+        "code" : "404 NOT FOUND",
+        "type" : "common"
+      },
+      "SVC1003" : {
+        "exception" : "Invalid Requested Operation",
+        "description" : "Requested Operation does not exist",
+        "text" : "Requested HTTP Method Operation does not exist",
+        "code" : "400 BAD REQUEST",
+        "type" : "common"
+      },
+      "SVC1023" : {
+        "exception" : "Content not well formed",
+        "description" : "The body of a REST request is not correctly formed, i.e.: the JSON body is not well formed",
+        "text" : "\"Parser Error: JSON content not well formed\"",
+        "code" : "400 BAD REQUEST",
+        "type" : "common"
+      },
+      "SVC1024" : {
+        "exception" : "Repeated query parameter",
+        "description" : "API Request with a repeated query parameter",
+        "text" : "\"Repeated query parameter: %1\" %1 - name of the repeated query parameter",
+        "code" : "400 BAD REQUEST",
+        "type" : "common"
+      }
+    },
+    "service" : {
+      "SVC3700" : {
+        "exception" : "Charge Failed",
+        "description" : "The operation failed, and the charge was not applied. This would be the typical case that the end-user has not enough credit or some restriction on their account",
+        "text" : "\"Charge request failed when attempting it %1\" %1 - additional info",
+        "code" : "403 FORBIDDEN",
+        "type" : "specific"
+      },
+      "SVC3701" : {
+        "exception" : "Currency code invalid",
+        "description" : "Returned when the currency code included in the purchase information is invalid",
+        "text" : "\"Invalid Currency\"",
+        "code" : "403 FORBIDDEN",
+        "type" : "specific"
+      },
+      "SVC3702" : {
+        "exception" : "Taxes are invalid",
+        "description" : "Returned when the taxes indicated in the purchase information are invalid (they do not correspond with the legal percentage value)",
+        "text" : "\"Indicated taxes are invalid %1\"%1 - additional info",
+        "code" : "403 FORBIDDEN",
+        "type" : "specific"
+      },
+      "SVC3703" : {
+        "exception" : "Invalid code",
+        "description" : "The code specified within the purchase information is not valid",
+        "text" : "\"Invalid purchase code\"",
+        "code" : "403 FORBIDDEN",
+        "type" : "specific"
+      },
+      "SVC3704" : {
+        "exception" : "Invalid transactionId",
+        "description" : "The value specified within this parameter is wrong",
+        "text" : "\"Invalid Transaction Id\"",
+        "code" : "404 NOT FOUND",
+        "type" : "specific"
+      },
+      "SVC3705" : {
+        "exception" : "Insufficient payment method balance",
+        "description" : "Payment method balance is insufficient to complete the request",
+        "text" : "\"Insufficient payment method balance %1\"%1 - additional info",
+        "code" : "403 FORBIDDEN",
+        "type" : "specific"
+      },
+      "SVC3706" : {
+        "exception" : "Total amount does not match with specified amount and tax",
+        "description" : "The system requires that total amount matches with amount plus tax amount specified in the request",
+        "text" : "\"amount plus taxAmount must be equal to totalAmount\"",
+        "code" : "403 FORBIDDEN",
+        "type" : "specific"
+      },
+      "SVC3707" : {
+        "exception" : "Card error",
+        "description" : "There was a problem with the card used for the payment operation. The card is not usable for payments (i.e. expired, unknown, invalid, blocked)",
+        "text" : "\"Card error\"",
+        "code" : "403 FORBIDDEN",
+        "type" : "specific"
+      },
+      "SVC3708" : {
+        "exception" : "Refund impossible",
+        "description" : "The billing system reports that refund was impossible without further information",
+        "text" : "\"Refund impossible\"",
+        "code" : "403 FORBIDDEN",
+        "type" : "specific"
+      },
+      "SVC3709" : {
+        "exception" : "Payment operation already in progress",
+        "description" : "The billing system reports that a previous operation is already in progress (not finished) and so this new request is discarded",
+        "text" : "\"Operation already in progress\"",
+        "code" : "403 FORBIDDEN",
+        "type" : "specific"
+      },
+      "SVC3710" : {
+        "exception" : "Transaction already refunded",
+        "description" : "The billing system does not admit any further refunds (total or parcial) on the specified transaction",
+        "text" : "\"Transaction already refunded\"",
+        "code" : "403 FORBIDDEN",
+        "type" : "specific"
+      },
+      "SVC3711" : {
+        "exception" : "Transaction already captured",
+        "description" : "The billing system does not admit a Reservation Release because the transaction already reached a final status of captured",
+        "text" : "\"Transaction already captured\"",
+        "code" : "403 FORBIDDEN",
+        "type" : "specific"
+      },
+      "SVC0001" : {
+        "exception" : "Generic Client Error",
+        "description" : "Generic wildcard fault response",
+        "text" : "\"Generic Client Error: %1\" %1 - additional info",
+        "code" : "400 BAD REQUEST",
+        "type" : "common"
+      },
+      "SVC1004" : {
+        "exception" : "Deprecated API version",
+        "description" : "API error response for requests over a deprecated versión of the API.",
+        "text" : "\"Requested versión of API is deprecated. Use %1\" %1 – Supported versions of API",
+        "code" : "400 BAD REQUEST",
+        "type" : "common"
+      },
+      "SVC0005" : {
+        "exception" : "Duplicated Correlator",
+        "description" : "Correlator specified in a request message is invalid because it already exists.",
+        "text" : "\"Correlator %1 specified in field %2 is a duplicate\" %1 - Correlator %2 - Field",
+        "code" : "409 CONFLICT",
+        "type" : "common"
+      },
+      "SVC1006" : {
+        "exception" : "Non Existent Resource ID",
+        "description" : "Reference to a resource identifier which does not exist in the collection/repository referred (e.g.: invalid Id)",
+        "text" : "\"Resource %1 does not exist\" %1 Resource Identifier",
+        "code" : "404 NOT FOUND",
+        "type" : "common"
+      },
+      "SVC1011" : {
+        "exception" : "Invalid parameter length",
+        "description" : "Request is indicating a parameter which overcomes length limit established by the service",
+        "text" : "\"Invalid %1 length. Length should be less than %2 characters\" %1 - Parameter %2 - Parameter Maximum",
+        "code" : "400 BAD REQUEST",
+        "type" : "common"
+      },
+      "SVC1013" : {
+        "exception" : "Non Allowed Operation",
+        "description" : "Operation syntax is right, but it does not fulfil the conditions (permissions,...) of the scenario or service",
+        "text" : "\"%1 Operation is not allowed: %2\" %1 – Operation %2 - Details",
+        "code" : "403 FORBIDDEN",
+        "type" : "common"
+      },
+      "SVC1020" : {
+        "exception" : "Expected parameter missing",
+        "description" : "API error response for requests with the absence of some expected parameter. I.e.: a parameter that is needed in certain use case, even when the parameter is optional in Swagger",
+        "text" : "\"Needed parameter was not found. %1\" %1 – element/attribute name",
+        "code" : "400 NOT FOUND",
+        "type" : "common"
+      },
+      "SVC1021" : {
+        "exception" : "Wrong or unsupported parameter value",
+        "description" : "API Request with an element or attribute value in the body which is not valid in the body (not supported by the service logic, out of range, etc.). The value is valid according to Swagger but service logic does not support/allow it.",
+        "text" : "\"Invalid parameter value: %1. Supported values are %2\" %1 - Element/Attribute name %2 - Supported values (inclusion of this information is optional)",
+        "code" : "400 BAD REQUEST",
+        "type" : "common"
+      }
+    },
+    "server" : {
+      "SVR1000" : {
+        "exception" : "Generic Server Fault",
+        "description" : "There was a problem in the Service Providers network that prevented to carry out the request",
+        "text" : "\"Generic Server Error: %1\" %1 - Details",
+        "code" : "500 INTERNAL SERVER ERROR",
+        "type" : "common"
+      },
+      "SVR1003" : {
+        "exception" : "Not Implemented Operation",
+        "description" : "There was a problem in the Service Providers network that prevented to carry out the request",
+        "text" : "\"Requested Operation is not implemented in server: %1\" %1 – HTTP method",
+        "code" : "501 NOT IMPLEMENTED",
+        "type" : "common"
+      },
+      "SVR1006" : {
+        "exception" : "Service Unavailable",
+        "description" : "There was a problem in Server side, unable to handle the request due to a temporary overloading or maintenance of the server",
+        "text" : "\"Service temporarily unavailable: system overloaded\"",
+        "code" : "503 SERVICE UNAVAILABLE",
+        "type" : "common"
+      },
+      "SVR1008" : {
+        "exception" : "Timeout processing request",
+        "description" : "There was a timeout in the server side while processing the request.",
+        "text" : "\"Timeout processing request[:%s]\" [:%s] - is optional %s – a string with more details about the timeout cause",
+        "code" : "503 SERVICE UNAVAILABLE",
+        "type" : "common"
+      }
+    }
+  }
+}
